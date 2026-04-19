@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Chrome SoundMute",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Undetectable tab muting via Chrome tab capture.",
   "permissions": ["tabCapture", "offscreen", "activeTab", "storage"],
   "background": {
@@ -9,5 +9,19 @@
   },
   "action": {
     "default_title": "Toggle silent tab mute"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://www.twitch.tv/*",
+        "*://player.twitch.tv/*",
+        "*://embed.twitch.tv/*",
+        "*://m.twitch.tv/*"
+      ],
+      "js": ["content-twitch.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    }
+  ]
 }
