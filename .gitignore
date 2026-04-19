@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+*.zip
+*.crx
+*.pem
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.claude/
