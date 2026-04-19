@@ -8,10 +8,15 @@
     return origToString.call(this);
   };
   toStringSpoofs.set(spoofedToString, origToString.call(origToString));
+  try { Object.defineProperty(spoofedToString, 'name', { value: 'toString', configurable: true }); } catch {}
   Function.prototype.toString = spoofedToString;
 
   const registerSpoof = (fn, originalFn) => {
     try { toStringSpoofs.set(fn, origToString.call(originalFn)); } catch {}
+    try {
+      const origName = originalFn && originalFn.name;
+      if (origName) Object.defineProperty(fn, 'name', { value: origName, configurable: true });
+    } catch {}
   };
 
   const redefineGetter = (proto, prop, value) => {
