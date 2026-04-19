@@ -1,5 +1,11 @@
 const STORAGE_PREFIX = 'capturing_';
 
+const stopCaptureForTab = async (tabId) => {
+  try { await chrome.runtime.sendMessage({ type: 'STOP_CAPTURE', tabId }); } catch {}
+  try { await chrome.storage.session.remove(STORAGE_PREFIX + tabId); } catch {}
+  try { await chrome.action.setBadgeText({ text: '', tabId }); } catch {}
+};
+
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab?.id) return;
   const key = STORAGE_PREFIX + tab.id;
@@ -7,9 +13,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   const { [key]: active } = await chrome.storage.session.get(key);
 
   if (active) {
-    await chrome.runtime.sendMessage({ type: 'STOP_CAPTURE', tabId: tab.id });
-    await chrome.storage.session.remove(key);
-    await chrome.action.setBadgeText({ text: '', tabId: tab.id });
+    await stopCaptureForTab(tab.id);
     return;
   }
 
@@ -30,11 +34,15 @@ chrome.action.onClicked.addListener(async (tab) => {
   await chrome.action.setBadgeBackgroundColor({ color: '#c0392b', tabId: tab.id });
 });
 
-chrome.tabs.onRemoved.addListener(async (tabId) => {
+chrome.tabs.onRemoved.addListener((tabId) => {
+  stopCaptureForTab(tabId);
+});
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+  if (changeInfo.status !== 'loading') return;
   const key = STORAGE_PREFIX + tabId;
   const { [key]: active } = await chrome.storage.session.get(key);
   if (active) {
-    await chrome.runtime.sendMessage({ type: 'STOP_CAPTURE', tabId });
-    await chrome.storage.session.remove(key);
+    await stopCaptureForTab(tabId);
   }
 });
