@@ -1,14 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Chrome SoundMute",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Undetectable tab muting via Chrome tab capture.",
-  "permissions": ["tabCapture", "offscreen", "activeTab", "storage"],
+  "permissions": ["tabCapture", "offscreen", "activeTab", "storage", "tabs"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
     "default_title": "Toggle silent tab mute"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
   "content_scripts": [
     {

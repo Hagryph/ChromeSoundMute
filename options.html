@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SoundMute Options</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      max-width: 520px;
+      margin: 32px auto;
+      padding: 0 16px;
+      color: #222;
+      line-height: 1.45;
+    }
+    h1 { font-size: 20px; margin-bottom: 4px; }
+    p.hint { color: #666; margin-top: 0; font-size: 13px; }
+    fieldset { border: 1px solid #ddd; border-radius: 6px; padding: 16px; margin: 16px 0; }
+    legend { padding: 0 6px; font-weight: 600; font-size: 13px; }
+    label.row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 13px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+    button {
+      padding: 6px 14px;
+      font-size: 14px;
+      border: 1px solid #888;
+      border-radius: 4px;
+      background: #fafafa;
+      cursor: pointer;
+    }
+    button:hover { background: #eee; }
+    .status { color: #2a7; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h1>Chrome SoundMute</h1>
+  <p class="hint">Settings are per-browser, not per-tab. Mute toggle is still the toolbar icon.</p>
+
+  <fieldset>
+    <legend>Auto-mute on tab switch</legend>
+    <label class="row">
+      <input type="checkbox" id="autoMute">
+      <span>Mute matching tabs when the user switches away from them</span>
+    </label>
+    <label class="row" style="flex-direction: column; align-items: stretch;">
+      <span style="margin-bottom: 4px;">Domains (one per line, matches host + subdomains)</span>
+      <textarea id="domains" placeholder="www.twitch.tv&#10;twitch.tv"></textarea>
+    </label>
+  </fieldset>
+
+  <div class="actions">
+    <button id="save">Save</button>
+    <span id="status" class="status" aria-live="polite"></span>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
