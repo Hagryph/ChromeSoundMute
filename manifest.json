@@ -5,7 +5,7 @@
   "description": "Undetectable tab muting via Chrome tab capture.",
   "permissions": ["tabCapture", "offscreen", "activeTab", "storage", "tabs", "contextMenus"],
   "host_permissions": [
-    "*://*.twitch.tv/*"
+    "<all_urls>"
   ],
   "background": {
     "service_worker": "background.js"
