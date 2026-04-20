@@ -109,6 +109,16 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.url || changeInfo.status === 'complete') {
     await updateMenuForTab(tab);
   }
+  if (changeInfo.status === 'complete' && tab && !tab.active) {
+    const { autoMuteDomains = [] } = await chrome.storage.local.get('autoMuteDomains');
+    if (!autoMuteDomains.length) return;
+    const host = getTabHost(tab.url);
+    if (!isAutoDomain(host, autoMuteDomains)) return;
+    const key = STORAGE_PREFIX + tabId;
+    const state = (await chrome.storage.session.get(key))[key];
+    if (state) return;
+    try { await startCaptureForTab(tabId, true); } catch {}
+  }
 });
 
 chrome.tabs.onActivated.addListener(async ({ tabId: newActive, windowId }) => {
