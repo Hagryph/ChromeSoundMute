@@ -110,13 +110,10 @@ const initLastActive = async () => {
   } catch {}
 };
 
-const initialize = async () => {
-  setupMenu();
-  await initLastActive();
-};
+chrome.runtime.onInstalled.addListener(setupMenu);
+chrome.runtime.onStartup.addListener(setupMenu);
 
-chrome.runtime.onInstalled.addListener(initialize);
-chrome.runtime.onStartup.addListener(initialize);
+initLastActive();
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab) return;
