@@ -97,8 +97,26 @@ const setupMenu = () => {
   });
 };
 
-chrome.runtime.onInstalled.addListener(setupMenu);
-chrome.runtime.onStartup.addListener(setupMenu);
+const initLastActive = async () => {
+  try {
+    const windows = await chrome.windows.getAll({ populate: false });
+    for (const win of windows) {
+      if (win.id == null) continue;
+      const [activeTab] = await chrome.tabs.query({ active: true, windowId: win.id });
+      if (activeTab?.id != null) {
+        await chrome.storage.session.set({ [LAST_ACTIVE_PREFIX + win.id]: activeTab.id });
+      }
+    }
+  } catch {}
+};
+
+const initialize = async () => {
+  setupMenu();
+  await initLastActive();
+};
+
+chrome.runtime.onInstalled.addListener(initialize);
+chrome.runtime.onStartup.addListener(initialize);
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab) return;
