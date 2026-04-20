@@ -1,6 +1,8 @@
 const STORAGE_PREFIX = 'capturing_';
+const OVERRIDE_PREFIX = 'overrideAuto_';
 const LAST_ACTIVE_PREFIX = 'lastActive_';
 const MENU_ID = 'soundmute-auto-toggle';
+const OVERRIDE_MENU_ID = 'soundmute-override-auto';
 
 const getTabHost = (url) => {
   if (!url) return null;
@@ -10,6 +12,11 @@ const getTabHost = (url) => {
 const isAutoDomain = (host, domains) => {
   if (!host || !domains?.length) return false;
   return domains.some((d) => host === d || host.endsWith('.' + d));
+};
+
+const getOverride = async (tabId) => {
+  const key = OVERRIDE_PREFIX + tabId;
+  return !!(await chrome.storage.session.get(key))[key];
 };
 
 const startCaptureForTab = async (tabId, auto) => {
@@ -45,13 +52,27 @@ const updateMenuForTab = async (tab) => {
         enabled: false,
         checked: false,
       });
+      await chrome.contextMenus.update(OVERRIDE_MENU_ID, {
+        title: "Don't auto-mute this tab (until reload)",
+        enabled: false,
+        checked: false,
+      });
       return;
     }
+
     const { autoMuteDomains = [] } = await chrome.storage.local.get('autoMuteDomains');
     await chrome.contextMenus.update(MENU_ID, {
       title: `Auto-mute ${host} on tab switch`,
       enabled: true,
       checked: autoMuteDomains.includes(host),
+    });
+
+    const domainMatches = isAutoDomain(host, autoMuteDomains);
+    const override = tab.id != null ? await getOverride(tab.id) : false;
+    await chrome.contextMenus.update(OVERRIDE_MENU_ID, {
+      title: "Don't auto-mute this tab (until reload)",
+      enabled: domainMatches,
+      checked: override,
     });
   } catch {}
 };
@@ -65,6 +86,14 @@ const setupMenu = () => {
       contexts: ['page', 'action'],
       checked: false,
     });
+    chrome.contextMenus.create({
+      id: OVERRIDE_MENU_ID,
+      title: "Don't auto-mute this tab (until reload)",
+      type: 'checkbox',
+      contexts: ['page', 'action'],
+      checked: false,
+      enabled: false,
+    });
   });
 };
 
@@ -72,15 +101,37 @@ chrome.runtime.onInstalled.addListener(setupMenu);
 chrome.runtime.onStartup.addListener(setupMenu);
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId !== MENU_ID) return;
-  const host = getTabHost(tab?.url);
-  if (!host) return;
-  const { autoMuteDomains = [] } = await chrome.storage.local.get('autoMuteDomains');
-  const updated = autoMuteDomains.includes(host)
-    ? autoMuteDomains.filter((d) => d !== host)
-    : [...autoMuteDomains, host];
-  await chrome.storage.local.set({ autoMuteDomains: updated });
-  if (tab) await updateMenuForTab(tab);
+  if (!tab) return;
+
+  if (info.menuItemId === MENU_ID) {
+    const host = getTabHost(tab.url);
+    if (!host) return;
+    const { autoMuteDomains = [] } = await chrome.storage.local.get('autoMuteDomains');
+    const updated = autoMuteDomains.includes(host)
+      ? autoMuteDomains.filter((d) => d !== host)
+      : [...autoMuteDomains, host];
+    await chrome.storage.local.set({ autoMuteDomains: updated });
+    await updateMenuForTab(tab);
+    return;
+  }
+
+  if (info.menuItemId === OVERRIDE_MENU_ID) {
+    if (tab.id == null) return;
+    const key = OVERRIDE_PREFIX + tab.id;
+    const current = await getOverride(tab.id);
+    if (current) {
+      await chrome.storage.session.remove(key);
+    } else {
+      await chrome.storage.session.set({ [key]: true });
+      const captureKey = STORAGE_PREFIX + tab.id;
+      const state = (await chrome.storage.session.get(captureKey))[captureKey];
+      if (state?.auto) {
+        await stopCaptureForTab(tab.id);
+      }
+    }
+    await updateMenuForTab(tab);
+    return;
+  }
 });
 
 chrome.action.onClicked.addListener(async (tab) => {
@@ -96,8 +147,9 @@ chrome.action.onClicked.addListener(async (tab) => {
   await startCaptureForTab(tab.id, false);
 });
 
-chrome.tabs.onRemoved.addListener((tabId) => {
+chrome.tabs.onRemoved.addListener(async (tabId) => {
   stopCaptureForTab(tabId);
+  try { await chrome.storage.session.remove(OVERRIDE_PREFIX + tabId); } catch {}
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -105,6 +157,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     const key = STORAGE_PREFIX + tabId;
     const state = (await chrome.storage.session.get(key))[key];
     if (state) await stopCaptureForTab(tabId);
+    try { await chrome.storage.session.remove(OVERRIDE_PREFIX + tabId); } catch {}
   }
   if (changeInfo.url || changeInfo.status === 'complete') {
     await updateMenuForTab(tab);
@@ -114,6 +167,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (!autoMuteDomains.length) return;
     const host = getTabHost(tab.url);
     if (!isAutoDomain(host, autoMuteDomains)) return;
+    if (await getOverride(tabId)) return;
     const key = STORAGE_PREFIX + tabId;
     const state = (await chrome.storage.session.get(key))[key];
     if (state) return;
@@ -143,6 +197,7 @@ chrome.tabs.onActivated.addListener(async ({ tabId: newActive, windowId }) => {
   const prevTab = await chrome.tabs.get(prev).catch(() => null);
   const prevHost = getTabHost(prevTab?.url);
   if (!isAutoDomain(prevHost, autoMuteDomains)) return;
+  if (await getOverride(prev)) return;
 
   const prevKey = STORAGE_PREFIX + prev;
   const prevState = (await chrome.storage.session.get(prevKey))[prevKey];
