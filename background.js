@@ -24,17 +24,27 @@ const stopCaptureForTab = async (tabId) => {
   try { await chrome.action.setBadgeText({ text: '', tabId }); } catch {}
 };
 
-chrome.action.onClicked.addListener(async (tab) => {
-  if (!tab?.id) return;
-  const key = STORAGE_PREFIX + tab.id;
+const toggleMuteForTab = async (tabId) => {
+  if (tabId == null) return;
+  const key = STORAGE_PREFIX + tabId;
   const active = (await chrome.storage.session.get(key))[key];
-
   if (active) {
-    await stopCaptureForTab(tab.id);
-    return;
+    await stopCaptureForTab(tabId);
+  } else {
+    await startCaptureForTab(tabId);
   }
+};
 
-  await startCaptureForTab(tab.id);
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab?.id) return;
+  toggleMuteForTab(tab.id);
+});
+
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.type === 'TOGGLE_MUTE_FROM_PAGE') {
+    const tabId = sender?.tab?.id;
+    if (tabId != null) toggleMuteForTab(tabId);
+  }
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => {
